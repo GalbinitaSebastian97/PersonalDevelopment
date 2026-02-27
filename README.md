@@ -97,10 +97,21 @@ Obstruction detection | System voltage check
 ⚙️ Mechanical Folding Reference
 --------------------------------
 
+📄 **[View Full Architecture PDF](./package/ExteriorMirrorLibrary/docs/Arhitecture/FramelessMirror.pdf)**
+
 <img width="857" height="379" alt="image" src="https://github.com/user-attachments/assets/3098a7b6-0795-4064-a37c-0991856768d6" />
 <img width="1051" height="739" alt="image" src="https://github.com/user-attachments/assets/4e043b27-1d97-4319-be89-06ee2f3d2511" />
 <img width="745" height="518" alt="image" src="https://github.com/user-attachments/assets/ed4445d7-722e-4fe2-a0aa-43f2c4133d45" />
 
+
+📚 Documentation
+----------------
+The project includes detailed technical documentation:
+
+* **[Architecture Diagram (PDF)](./package/ExteriorMirrorLibrary/docs/Arhitecture/FramelessMirror.pdf)** - Frameless mirror system architecture
+* **[Software Requirements](./package/ExteriorMirrorLibrary/docs/SoftwareRequirements/mirrorFrameless_swr.rst)** - System requirements specification
+* **[Software Detail Design](./package/ExteriorMirrorLibrary/docs/SoftwareDetailDesign/mirrorFrameles_sdd.rst)** - Detailed design documentation
+* **[Integration Tests](./package/ExteriorMirrorLibrary/docs/SoftwareIntegrationTests/mirrorFrameless_its.rst)** - Test specifications
 
 🚀 Future Improvements
 -----------------------
