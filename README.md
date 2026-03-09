@@ -108,9 +108,20 @@ Obstruction detection | System voltage check
 
  * Integrate CAN communication layer
 
- * Extend to memory profiles (multiple users)
-
  * Add diagnostics reporting (DTCs)
+
+
+How to Build and Run (Step-by-Step)
+----------------------------------
+
+1. Run the provided PowerShell script in your terminal : .\build_and_run.ps1
+2. (Optional) In case you want to explore the build environment inside the container: docker run -it frameless-fold-poc /bin/bash
+
+Project Structure
+-----------------
+    * /package: Contains all the work products such as configuration, parameters, source files
+    * /dist: It is not visible but it contains the container image.
+    * (In development) Export all the relevant work products that a customer need for the project to be integrated.
 
 🤝 Contribution
 ---------------

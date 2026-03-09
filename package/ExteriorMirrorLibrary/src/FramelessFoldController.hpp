@@ -2,8 +2,9 @@
 #ifndef FRAMELESS_FOLD_CONTROLLER_HPP
 #define FRAMELESS_FOLD_CONTROLLER_HPP
 
-#include "mirrorConfiguration.h"
-#include "InternalTypes.h"
+#include "mirrorConfiguration.hpp"
+#include "InternalTypes.hpp"
+#include "NvMHandling.hpp"
 
 #if EMBL_FRAMELESS_MIRROR_SUPPORT
 namespace emblex
@@ -12,17 +13,17 @@ namespace emblex
 class FramelessFoldController
 {
 public:
-    FramelessFoldController() = default;
+    FramelessFoldController();
     ~FramelessFoldController() = default;
 
     void Init();
     void MainTask();
 
     // query interface
-    t_emblGlassAutoAdjustCmd getAutoAdjCmd() const;
-    uint16                    getYTargetPos() const;
-    uint16                    getXTargetPos() const;
-    t_emblMirrorFoldCmd       getFoldCommand() const;
+    t_emblGlassAutoAdjustCmd  getAutoAdjCmd();
+    uint16                    getYTargetPos();
+    uint16                    getXTargetPos();
+    t_emblMirrorFoldCmd       getFoldCommand();
 
 private:
     static constexpr unsigned HORIZONTAL_AXIS = 0u;
@@ -30,7 +31,8 @@ private:
 
     mirrorFramelessFoldData      _data{};
     mirrorCtrlNvMData*           _nvMem = nullptr;
-
+    embl::control::EmblControlNvMHandler& _nvmHandler;
+    
     void mirrorControl();
     void triggerFoldMovement();
     void triggerUnfoldMovement();

@@ -1,13 +1,14 @@
 
 /* Includes */
 /*============================================================================*/
-#include "Control_Interface.hpp"// In development
 #include "mirrorConfiguration.hpp"
 #include "InternalTypes.hpp"
-#include "Param.hpp"  // In development
+#include "Control_Interface.hpp"
+#include "mirrorParam.hpp"
 #include "FramelessFoldController.hpp"
 
 using namespace emblex;
+
 
 #if EMBL_FRAMELESS_MIRROR_SUPPORT
 // The C-style macros, global state, and free-standing helpers have been
@@ -16,8 +17,16 @@ using namespace emblex;
 
 // No module-level variables or prototypes are required any more.
 
+/* Macros */
+#define MIRROR_X_FOLD_POSITION 100u /* TBD: set the actual fold position on X axis */
+#define MIRROR_Y_FOLD_POSITION 100u /* TBD: set the actual fold position on Y axis */
 /* Exported functions */
 /*============================================================================*/
+//Update Constructor to initialize NvM handler reference
+FramelessFoldController::FramelessFoldController()
+    : _data{}
+    , _nvMem(nullptr)
+    , _nvmHandler(emblControl_getNvMHandlerInstance()){}
 
 /*********************************************************************/
 /*! \brief This functions is used to init FramelessFoldControl functionality
@@ -29,7 +38,7 @@ void FramelessFoldController::Init()
     single().FramelessAutoAdjCmd_e  = MIRR_GLASS_ADJ_AUTO_CMD_OFF;
     single().FramelessFoldActiveCmd_e = MIRRFLD_COMMAND_IDLE;
 
-    _nvMem = emblControl_getNvMRamImageAddress();
+    _nvMem = _nvmHandler.getNvMRamImageAddress();
 }
 /*************************************************************/
 /*! @brief FramelessFoldControl Main cyclic task.
@@ -51,9 +60,9 @@ void FramelessFoldController::MainTask()
  * This function shall be used in emblGlassAdjustment to set the auto
  * command.
  *
- * @return TRUE: Auto adj is enabled; FALSE: Auto Adj is disabled.
+ * @return true: Auto adj is enabled; false: Auto Adj is disabled.
  *********************************************************************/
-t_emblGlassAutoAdjustCmd FramelessFoldController::getAutoAdjCmd() const
+t_emblGlassAutoAdjustCmd FramelessFoldController::getAutoAdjCmd()
 {
     return single().FramelessAutoAdjCmd_e;
 }
@@ -66,7 +75,7 @@ t_emblGlassAutoAdjustCmd FramelessFoldController::getAutoAdjCmd() const
  * 
  * @return The value of the target position that was set.
  *********************************************************************/
-uint16 FramelessFoldController::getYTargetPos() const
+uint16 FramelessFoldController::getYTargetPos()
 {
     return axis(VERTICAL_AXIS).FramelessTargetPos_u16;
 }
@@ -79,7 +88,7 @@ uint16 FramelessFoldController::getYTargetPos() const
  * 
  * @return The value of the target position that was set.
  *********************************************************************/
-uint16 FramelessFoldController::getXTargetPos() const
+uint16 FramelessFoldController::getXTargetPos()
 {
     return axis(HORIZONTAL_AXIS).FramelessTargetPos_u16;
 }
@@ -89,7 +98,7 @@ uint16 FramelessFoldController::getXTargetPos() const
  *
  * @return The current command of mirror fold.
  *********************************************************************/
-t_emblMirrorFoldCmd FramelessFoldController::getFoldCommand() const
+t_emblMirrorFoldCmd FramelessFoldController::getFoldCommand()
 {
     return single().FramelessFoldActiveCmd_e;
 }
@@ -143,7 +152,7 @@ void FramelessFoldController::triggerUnfoldMovement()
  *********************************************************************/
 t_emblAbortReason FramelessFoldController::checkAbortConditions(bool requestOngoing)
 {
-    boolean posAxisXAvailable, posAxisYAvailable;
+    t_emblMirrorGlassAdjPosValidStat posAxisXAvailable;
     t_bmcs_StopReason horizontalStopReason;
     EmblCtrl_GlassAdjXMotor_Read_StopReason(&horizontalStopReason);
 
@@ -160,14 +169,13 @@ t_emblAbortReason FramelessFoldController::checkAbortConditions(bool requestOngo
     EmblCtrl_Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
 #endif /*EMBL_GLASS_AUTO_ADJUST_AVAILABLE*/
 
-    EmblCtrl_GlassAdjXMotor_Read_PositioningStatus(&posAxisXAvailable);
-    EmblCtrl_GlassAdjYMotor_Read_PositioningStatus(&posAxisYAvailable);
+    EmblCtrl_Read_embl_MirrorGlassAdjPosValidStat(&posAxisXAvailable);
 
 #if EMBL_FRAMELESS_MIRROR_BLOCK_DET_TYPE != 0u
     EmblCtrl_Read_embl_BlockState((uint8)GLASS_ADJ_X_MOTOR, &horizontalblockDetected);
 #endif
 
-    if ((posAxisXAvailable == (boolean)TRUE) || (posAxisYAvailable == (boolean)TRUE))
+    if ((posAxisXAvailable == true))
     {
         return ABORT_REASON_POS_ERROR;
     }
@@ -192,7 +200,9 @@ t_emblAbortReason FramelessFoldController::checkAbortConditions(bool requestOngo
 
     if (requestOngoing == true)
     {
-        return emblGlassAdjust_getAutoAdjustAbortReason();
+        /*TBD:During a frameless fold movement send to the glass adjustment module, if there were any abort reasons,
+        intercept it and save it to be send through the communication interface*/
+        return ABORT_REASON_NONE; /* TBD: I need to get the actual abort reason from the glass adjustment module and return it here*/
     }
 
     return ABORT_REASON_NONE;
@@ -215,21 +225,22 @@ void FramelessFoldController::mirrorControl()
 #endif /*EMBL_GLASS_AUTO_ADJUST_AVAILABLE*/
     
     /* Check for abort conditions; at new request don't check glass preconditions, wait one task for request to be processed */
-    const boolean requestOngoing_u8 = (prevFramelessFoldCmd != single().FramelessFoldCmd_e) ? FALSE : TRUE;
+    const bool requestOngoing_u8 = (prevFramelessFoldCmd != single().FramelessFoldCmd_e) ? false : true;
     foldAbortReason_e = checkAbortConditions(requestOngoing_u8);
 
     if(foldAbortReason_e == ABORT_REASON_NONE){ 
         /* Handle fold request */
         if ((single().FramelessFoldCmd_e == MIRRFLD_COMMAND_FOLD) && (prevFramelessFoldCmd != single().FramelessFoldCmd_e))
         {
-            const boolean nvmBusy_u1 = emblControl_IsNvMBusy();
-            if((nvmBusy_u1 == FALSE) && (_nvMem->FoldPosSaveAllowed_u1 == (boolean)TRUE))
+            const bool nvmBusy_u1 = _nvmHandler.isBusy();
+            if((nvmBusy_u1 == false) && (_nvMem->FoldPosSaveAllowed_u1 == true))
             {
                 /* Save current position before folding, reset abort reason */
-                _nvMem->FoldDrivePosX_u16 = emblGlassAdjust_getXPosition();
-                _nvMem->FoldDrivePosY_u16 = emblGlassAdjust_getYPosition();
-                _nvMem->FoldPosSaveAllowed_u1 = FALSE;
-                (void)emblControl_NvMWriteBlock();
+                /* TBD: I need to get the current position of the mirror X and Y motors*/
+                _nvMem->FoldDrivePosX_u16 = MIRROR_X_FOLD_POSITION; 
+                _nvMem->FoldDrivePosY_u16 = MIRROR_Y_FOLD_POSITION;
+                _nvMem->FoldPosSaveAllowed_u1 = false;
+                _nvmHandler.writeBlock();
             }
             triggerFoldMovement();
             single().FramelessFoldAbortReason_e = ABORT_REASON_NONE;
@@ -245,8 +256,10 @@ void FramelessFoldController::mirrorControl()
             /*Ongoing fold/unfold movement active*/
             if(single().FramelessAutoAdjCmd_e == MIRR_GLASS_ADJ_AUTO_CMD_ON)
             {
-                const t_emblMirrorGlassAutoAdjustStatus glassStatus_e = emblGlassAdjust_getAutoAdjStatus();
-                /*Check if auto adjustment was finished or aborted to set the abort reason*/
+                /* TBD: So I am thinking of fo sending a request to the glass adjustment module to performe a move to target position from the
+                saved positions in NvM*/
+                const t_emblMirrorGlassAutoAdjustStatus glassStatus_e = MIRR_AUTO_GLASS_ADJ_FINISHED; /* TBD: I need to get the actual status from the glass adjustment module*/
+                /*Check if auto adjustment was finished or aborted to set the abort reason*/
                 if (glassStatus_e == MIRR_AUTO_GLASS_ADJ_FINISHED)
                 {
                     single().FramelessFoldAbortReason_e = ABORT_REASON_POS_REACHED;
@@ -274,17 +287,17 @@ void FramelessFoldController::mirrorControl()
         single().FramelessFoldAbortReason_e = foldAbortReason_e;
     }
     /*If position in NvM is not allowed but user moved the mirror(manually or automatically) -> new position can be stored in NvM*/
-    if ((_nvMem->FoldPosSaveAllowed_u1 == (boolean)FALSE) && ((manualAdjustCmd != GLASS_ADJUST_CMD_NO_REQUEST) 
+    if ((_nvMem->FoldPosSaveAllowed_u1 == false) && ((manualAdjustCmd != GLASS_ADJUST_CMD_NO_REQUEST) 
 #if EMBL_GLASS_AUTO_ADJUST_AVAILABLE
      || (autoAdjustCmd != MIRR_GLASS_ADJ_AUTO_CMD_OFF)
 #endif /*EMBL_GLASS_AUTO_ADJUST_AVAILABLE*/
         ))
     {
-        const boolean nvmStatus_u1 = emblControl_IsNvMBusy();
-        if (nvmStatus_u1 == (boolean)FALSE)
+        const bool nvmStatus_u1 = _nvmHandler.isBusy();
+        if (nvmStatus_u1 == false)
         {
-            _nvMem->FoldPosSaveAllowed_u1 = TRUE;
-            (void)emblControl_NvMWriteBlock();
+            _nvMem->FoldPosSaveAllowed_u1 = true;
+            _nvmHandler.writeBlock();
         }
     }
 
