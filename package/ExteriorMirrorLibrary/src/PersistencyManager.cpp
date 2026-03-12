@@ -27,13 +27,13 @@ PersistencyManager& PersistencyManager::getInstance()
 PersistencyManager::PersistencyManager()
 {
     std::memset(&m_state, 0, sizeof(m_state));
-    m_state.defaultData.LowPositionFold_u16   = EMBL_MM_PARAM(embl_ctrl_FramelessFoldLowerLimitPos);
-    m_state.defaultData.LowPositionX_u16      = EMBL_MM_PARAM(embl_ctrl_FramelessHorizontalLowerLimitPos);
-    m_state.defaultData.HighPositionX_u16     = EMBL_MM_PARAM(embl_ctrl_FramelessHorizontalUpperLimitPos);
-    m_state.defaultData.LowPositionY_u16      = EMBL_MM_PARAM(embl_ctrl_FramelessVerticalLowerLimitPos);
-    m_state.defaultData.HighPositionY_u16     = EMBL_MM_PARAM(embl_ctrl_FramelessVerticalUpperLimitPos);
-    m_state.defaultData.FoldDrivePosX_u16     = EMBL_MM_PARAM(embl_ctrl_FramelessDrivePosX);
-    m_state.defaultData.FoldDrivePosY_u16     = EMBL_MM_PARAM(embl_ctrl_FramelessDrivePosY);
+    m_state.defaultData.LowPositionFold_u16   = EMBL_MM_PARAM(embl_FramelessFoldLowerLimitPos);
+    m_state.defaultData.LowPositionX_u16      = EMBL_MM_PARAM(embl_FramelessHorizontalLowerLimitPos);
+    m_state.defaultData.HighPositionX_u16     = EMBL_MM_PARAM(embl_FramelessHorizontalUpperLimitPos);
+    m_state.defaultData.LowPositionY_u16      = EMBL_MM_PARAM(embl_FramelessVerticalLowerLimitPos);
+    m_state.defaultData.HighPositionY_u16     = EMBL_MM_PARAM(embl_FramelessVerticalUpperLimitPos);
+    m_state.defaultData.FoldDrivePosX_u16     = EMBL_MM_PARAM(embl_FramelessDrivePosX);
+    m_state.defaultData.FoldDrivePosY_u16     = EMBL_MM_PARAM(embl_FramelessDrivePosY);
     m_state.defaultData.FoldPosSaveAllowed_u1 = true;
     m_state.defaultSet = true;
     m_state.NvMWriteState = EMBLC_NVM_REQ_IDLE;

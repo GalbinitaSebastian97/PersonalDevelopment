@@ -170,7 +170,7 @@ void FramelessFoldController::triggerFoldMovement()
     auto& data = _persistentData.value();
     
     /*Go to the soft stop position on X axis*/
-    axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = data.LowPositionFold_u16 + EMBL_MM_PARAM(embl_ctrl_FramelessFoldPositionOffSet);
+    axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = data.LowPositionFold_u16 + EMBL_MM_PARAM(embl_FramelessFoldPositionOffSet);
     /*Go to the midpoint position on Y axis*/
     axis(VERTICAL_AXIS).FramelessTargetPos_u16 = static_cast<uint16>((data.HighPositionY_u16 + data.LowPositionY_u16) >> 1u);
     
@@ -200,8 +200,8 @@ void FramelessFoldController::triggerUnfoldMovement()
     else
     {
         // Use default positions from parameters
-        axis(VERTICAL_AXIS).FramelessTargetPos_u16 = EMBL_MM_PARAM(embl_ctrl_FramelessDrivePosY);
-        axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = EMBL_MM_PARAM(embl_ctrl_FramelessDrivePosX);
+        axis(VERTICAL_AXIS).FramelessTargetPos_u16 = EMBL_MM_PARAM(embl_FramelessDrivePosY);
+        axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = EMBL_MM_PARAM(embl_FramelessDrivePosX);
     }
     
     // Initiate the unfold sequence with auto-adjustment
@@ -248,7 +248,7 @@ t_emblAbortReason FramelessFoldController::checkAbortConditions(bool requestOngo
 #if EMBL_GLASS_AUTO_ADJUST_AVAILABLE
          || (autoAdjustCmd != MIRR_GLASS_ADJ_AUTO_CMD_OFF)
 #endif
-        ) && (EMBL_MM_PARAM(embl_ctrl_FramelessFoldGlassRequestPriority) == 0u) &&
+        ) && (EMBL_MM_PARAM(embl_FramelessFoldGlassRequestPriority) == 0u) &&
         (single().FramelessAutoAdjCmd_e == MIRR_GLASS_ADJ_AUTO_CMD_OFF) &&
         (single().FramelessFoldCmd_e != MIRRFLD_COMMAND_IDLE))
     {

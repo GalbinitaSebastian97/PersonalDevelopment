@@ -334,7 +334,7 @@ Describe SW Unit Dynamic Behavior
       :Move axis Y to the center(avg. between HighPositionY_u8
       and LowPositionY_u8) learned from Init routine;
       :Move axis X to Soft stop position (sum between LowPositionFold_u8
-      and an off set **embl_ctrl_FramelessFoldPositionOffSet**);
+      and an off set **embl_FramelessFoldPositionOffSet**);
       :Automatic movement flag is set;
       stop
       @enduml
@@ -356,8 +356,8 @@ Describe SW Unit Dynamic Behavior
         saved in NvM;
       else(False)
         :Use parameter values for the automatic movements
-        **embl_ctrl_FramelessDrivePosX** and
-        **embl_ctrl_FramelessDrivePosY**;
+        **embl_FramelessDrivePosX** and
+        **embl_FramelessDrivePosY**;
       endif
       :Automatic movement flag is set;
       stop
