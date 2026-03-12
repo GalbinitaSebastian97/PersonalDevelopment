@@ -105,6 +105,7 @@ Obstruction detection | System voltage check
 🚀 Future Improvements
 -----------------------
  * Add simulation or test cases
+ * the control logic (FramelessFoldControl) should have zero knowledge of IPC and the IPC layer should have zero knowledge of mirror logic.
 
 How to Build and Run (Step-by-Step)
 ----------------------------------
