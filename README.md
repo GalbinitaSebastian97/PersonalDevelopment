@@ -106,11 +106,6 @@ Obstruction detection | System voltage check
 -----------------------
  * Add simulation or test cases
 
- * Integrate CAN communication layer
-
- * Add diagnostics reporting (DTCs)
-
-
 How to Build and Run (Step-by-Step)
 ----------------------------------
 
