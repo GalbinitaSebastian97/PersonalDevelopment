@@ -1,8 +1,20 @@
-🚗 Frameless Mirror Control – Functional Architecture
-------------------------------------------------------
+
+# 🚗 Frameless Mirror Control – Functional Architecture
+
+
 📌 Overview
 -----------
 This project documents the functional architecture and control logic behind a frameless automotive mirror folding system. It focuses on how fold/unfold commands are processed, validated, and executed safely while preserving user adjustments.
+
+
+Repositiory Top Level Folder Structure
+======================================
+
+| Folder | Description |
+| :--- | :--- |
+| **package** | Root folder for generic reusable software packages. A package may contain multiple software components. Each package is individually versioned and baselined. |
+| **cmb** | *(In development)* Contains the CMB core and scripts used to run actions. |
+| **app** | *(In development)* Contains `.vscode` templates, `econ` configurations/settings, CMB tools configurations, and the variants configuration to be built. |
 
 The system ensures:
 
@@ -112,12 +124,6 @@ How to Build and Run (Step-by-Step)
 
 1. Run the provided PowerShell script in your terminal : .\build_and_run.ps1
 2. (Optional) In case you want to explore the build environment inside the container: docker run -it frameless-fold-poc /bin/bash
-
-Project Structure
------------------
-    * /package: Contains all the work products such as configuration, parameters, source files
-    * /dist: It is not visible but it contains the container image.
-    * (In development) Export all the relevant work products that a customer need for the project to be integrated.
 
 🤝 Contribution
 ---------------
