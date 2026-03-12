@@ -1,3 +1,6 @@
+#ifndef MIRROR_PARAM_HPP
+#define MIRROR_PARAM_HPP
+
 #include "InternalTypes.hpp"
 /* Parameters block */
 typedef struct{
@@ -54,3 +57,5 @@ typedef struct{
 #define PARAM_embl_ctrl_FramelessDrivePosY 500u
 #define PARAM_embl_ctrl_FramelessFoldGlassRequestPriority 1u
 #define PARAM_embl_ctrl_NvMResponseTimeout 100u
+
+#endif //MIRROR_PARAM_HPP

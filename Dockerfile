@@ -1,19 +1,13 @@
-# Dockerfile
-FROM ubuntu:24.04
+# Build everything together using CMake
+FROM gcc:latest
+RUN apt-get update && apt-get install -y cmake
 
-# install build tools (add your cross‑compiler/RTE here as needed)
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake git && rm -rf /var/lib/apt/lists/*
-
+COPY . /app
 WORKDIR /app
 
-# copy sources
-COPY . .    
+# Compile both executables at once
+RUN mkdir build && cd build && cmake .. && make
 
-RUN find . -name "Control_Interface.hpp"
-
-# build everything
-RUN mkdir build && cd build && cmake .. && make -j$(nproc)
-
-# default action is to run the proof‑of‑concept executable
-CMD ["./build/poc"]
-
+# Use the start script to launch them in the SAME environment
+RUN chmod +x start.sh
+CMD ["./start.sh"]

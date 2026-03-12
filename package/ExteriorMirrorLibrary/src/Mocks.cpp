@@ -1,3 +1,6 @@
+#ifndef MOCKS_HPP
+#define MOCKS_HPP
+
 #include "Control_Interface.hpp"
 
 extern "C" void EmblCtrl_Read_embl_GlassManualAdjustCmd(t_emblGlassManualAdjustCmd* cmd) {
@@ -37,3 +40,4 @@ extern "C" void EmblCtrl_Read_embl_MirrorFoldCmd(t_emblMirrorFoldCmd* cmd) {
 extern "C" void EmblCtrl_MirrorFoldCmd_Write_embl_AbortReason(t_emblAbortReason data) {
     (void)data;
 }
+#endif // MOCKS_HPP

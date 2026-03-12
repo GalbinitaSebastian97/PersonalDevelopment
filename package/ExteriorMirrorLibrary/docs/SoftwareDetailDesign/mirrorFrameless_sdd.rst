@@ -357,7 +357,7 @@ Describe SW Unit Dynamic Behavior
       else(False)
         :Use parameter values for the automatic movements
         **embl_ctrl_FramelessDrivePosX** and
-        **embl_ctrl_FramelessDrivePosY**;d
+        **embl_ctrl_FramelessDrivePosY**;
       endif
       :Automatic movement flag is set;
       stop

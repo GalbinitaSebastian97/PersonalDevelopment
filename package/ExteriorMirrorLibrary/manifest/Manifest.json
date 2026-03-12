@@ -1,0 +1,21 @@
+{
+    "executable":{
+        "name":"mirror_fold_service",
+        "path":"/opt/services/mirror_fold_service",
+        "execution_dependencies": [
+            "/opt/platform/ara_com",
+            "/opt/platform/ara_per"
+        ]
+    },
+    "process":{
+        "state-Dependent_startup_confings":[
+            {
+                "function_group_state":"Driving",
+                "startup_config": {
+                    "scheduling_policy": "SCHED_FIFO",
+                    "scheduling_priority": 10
+                }
+            }
+        ]
+    }
+}

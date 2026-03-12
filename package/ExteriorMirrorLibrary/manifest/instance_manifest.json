@@ -1,0 +1,6 @@
+{
+    "ServiceInterface":"MirrorFoldService",
+    "InstanceIdentifier": "sebastianGalbinita/embl/mirror_fold",
+    "CommunicationMode": "SOMEIP",
+    "Port":30501
+}
