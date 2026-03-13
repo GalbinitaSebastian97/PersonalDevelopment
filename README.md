@@ -13,7 +13,7 @@ Package List
 
 The following software package is maintained within the repository. For further information on the package pelase follow the link.
 
-[Exterior Mirror Basic Library](package/README.rst)
+[Exterior Mirror Basic Library](package/ExteriorMirrorLibrary/README.rst)
 
 How to Build and Run (Step-by-Step)
 ----------------------------------
