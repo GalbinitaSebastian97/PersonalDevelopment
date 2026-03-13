@@ -10,7 +10,7 @@
 
 using namespace emblex;
 
-#if EMBL_FRAMELESS_MIRROR_SUPPORT
+#if FRAMELESS_MIRROR_SUPPORT
 
 /* Macros */
 #define MIRROR_X_FOLD_POSITION 100u /* TBD: set the actual fold position on X axis */
@@ -170,7 +170,7 @@ void FramelessFoldController::triggerFoldMovement()
     auto& data = _persistentData.value();
     
     /*Go to the soft stop position on X axis*/
-    axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = data.LowPositionFold_u16 + EMBL_MM_PARAM(embl_FramelessFoldPositionOffSet);
+    axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = data.LowPositionFold_u16 + 20u;
     /*Go to the midpoint position on Y axis*/
     axis(VERTICAL_AXIS).FramelessTargetPos_u16 = static_cast<uint16>((data.HighPositionY_u16 + data.LowPositionY_u16) >> 1u);
     
@@ -200,8 +200,8 @@ void FramelessFoldController::triggerUnfoldMovement()
     else
     {
         // Use default positions from parameters
-        axis(VERTICAL_AXIS).FramelessTargetPos_u16 = EMBL_MM_PARAM(embl_FramelessDrivePosY);
-        axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = EMBL_MM_PARAM(embl_FramelessDrivePosX);
+        axis(VERTICAL_AXIS).FramelessTargetPos_u16 = 100u;
+        axis(HORIZONTAL_AXIS).FramelessTargetPos_u16 = 150u;
     }
     
     // Initiate the unfold sequence with auto-adjustment
@@ -221,41 +221,40 @@ void FramelessFoldController::triggerUnfoldMovement()
 t_emblAbortReason FramelessFoldController::checkAbortConditions(bool requestOngoing)
 {
     t_emblMirrorGlassAdjPosValidStat posAxisXAvailable;
-    t_bmcs_StopReason horizontalStopReason;
-    EmblCtrl_GlassAdjXMotor_Read_StopReason(&horizontalStopReason);
-
-#if EMBL_FRAMELESS_MIRROR_BLOCK_DET_TYPE != 0u
+    
+#if FRAMELESS_MIRROR_BLOCK_DET_TYPE != 0u
     t_emblMirrorBlockState horizontalblockDetected;
-    EmblCtrl_Read_embl_BlockState((uint8)EMBLC_INST_FRAMELESS_HORIZONTAL_MOTOR, &horizontalblockDetected);
+    Read_embl_BlockState((uint8)INST_FRAMELESS_HORIZONTAL_MOTOR, &horizontalblockDetected);
 #endif
 
     t_emblGlassManualAdjustCmd manualAdjustCmd;
-    EmblCtrl_Read_embl_GlassManualAdjustCmd(&manualAdjustCmd);
+    Read_embl_GlassManualAdjustCmd(&manualAdjustCmd);
 
-#if EMBL_GLASS_AUTO_ADJUST_AVAILABLE
+#if GLASS_AUTO_ADJUST_AVAILABLE
     t_emblGlassAutoAdjustCmd autoAdjustCmd;
-    EmblCtrl_Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
+    Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
 #endif
 
-    EmblCtrl_Read_embl_MirrorGlassAdjPosValidStat(&posAxisXAvailable);
+    Read_embl_MirrorGlassAdjPosValidStat(&posAxisXAvailable);
 
     if ((posAxisXAvailable == true))
     {
+        /* Glass positions from potentiometer are not available*/
         return ABORT_REASON_POS_ERROR;
     }
 
     if (((manualAdjustCmd != GLASS_ADJUST_CMD_NO_REQUEST)
-#if EMBL_GLASS_AUTO_ADJUST_AVAILABLE
+#if GLASS_AUTO_ADJUST_AVAILABLE
          || (autoAdjustCmd != MIRR_GLASS_ADJ_AUTO_CMD_OFF)
 #endif
-        ) && (EMBL_MM_PARAM(embl_FramelessFoldGlassRequestPriority) == 0u) &&
-        (single().FramelessAutoAdjCmd_e == MIRR_GLASS_ADJ_AUTO_CMD_OFF) &&
+        ) && (single().FramelessAutoAdjCmd_e == MIRR_GLASS_ADJ_AUTO_CMD_OFF) &&
         (single().FramelessFoldCmd_e != MIRRFLD_COMMAND_IDLE))
     {
+        /*Another reqeust is ongoing and this one doesn t have priority*/
         return ABORT_REASON_LOW_PRIO;
     }
 
-#if EMBL_FRAMELESS_MIRROR_BLOCK_DET_TYPE != 0u
+#if FRAMELESS_MIRROR_BLOCK_DET_TYPE != 0u
     if (horizontalStopReason == BMCS_STOP_REASON_BLOCK)
     {
         return ABORT_REASON_POS_UNREACHABLE;
@@ -285,10 +284,10 @@ void FramelessFoldController::mirrorControl()
     static t_emblMirrorFoldCmd prevFramelessFoldCmd = MIRRFLD_COMMAND_IDLE;
     t_emblAbortReason foldAbortReason_e;
     t_emblGlassManualAdjustCmd manualAdjustCmd;
-    EmblCtrl_Read_embl_GlassManualAdjustCmd(&manualAdjustCmd);
-#if EMBL_GLASS_AUTO_ADJUST_AVAILABLE
+    Read_embl_GlassManualAdjustCmd(&manualAdjustCmd);
+#if GLASS_AUTO_ADJUST_AVAILABLE
     t_emblGlassAutoAdjustCmd autoAdjustCmd;
-    EmblCtrl_Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
+    Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
 #endif
     
     const bool requestOngoing_u8 = (prevFramelessFoldCmd != single().FramelessFoldCmd_e) ? false : true;

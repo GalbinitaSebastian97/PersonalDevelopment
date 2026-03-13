@@ -16,9 +16,9 @@ struct NvMState {
     bool dataValid{false};
     bool defaultSet{false};
     /** Holds the current state of the EMBLA NvM write request */
-    EMBLC_NVM_REQ_STATE NvMWriteState;
+    NVM_REQ_STATE NvMWriteState;
     /** Holds the current state of the EMBLA NvM read request */
-    EMBLC_NVM_REQ_STATE NvMReadState;
+    NVM_REQ_STATE NvMReadState;
     /** Timeout for NvM requests */
     uint16 NvMReqTimeout;
 

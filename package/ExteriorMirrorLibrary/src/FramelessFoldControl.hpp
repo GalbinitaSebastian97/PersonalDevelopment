@@ -6,7 +6,7 @@
 #include "PersistencyManager.hpp"
 #include <optional>
 
-#if EMBL_FRAMELESS_MIRROR_SUPPORT
+#if FRAMELESS_MIRROR_SUPPORT
 namespace emblex
 {
 
