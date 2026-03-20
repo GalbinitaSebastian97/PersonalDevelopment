@@ -58,6 +58,10 @@ Architectural Overview
 ~~~~~~~~~~~~~~~~~~~~~~
 This module implements a three-layer AUTOSAR Adaptive architecture for exterior mirror control, following a strict signal-based communication pattern with clear separation of concerns.
 
+.. image:: docs/Arhitecture/ExterirorMirrorControlArhitecture.JPG
+   :alt: Exterior Mirror Control Architecture
+   :align: center
+
 Component Structure
 ~~~~~~~~~~~~~~~~~~~
 
