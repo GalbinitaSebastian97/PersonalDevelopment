@@ -51,6 +51,52 @@ the other and need software that can live in both.
 
 ----
 
+Exteriror Mirror Control Arhitecture
+------------------------------------
+
+Architectural Overview
+~~~~~~~~~~~~~~~~~~~~~~
+This module implements a three-layer AUTOSAR Adaptive architecture for exterior mirror control, following a strict signal-based communication pattern with clear separation of concerns.
+
+Component Structure
+~~~~~~~~~~~~~~~~~~~
+
+**EMBLA (Exterior Mirror Basic Library Application)**
+
+- Application layer responsible for request arbitration and validation
+- Performs authorization, speed limit, and parameter checks before processing mirror commands (fold/glass/memory/heat)
+- Implements arbitration logic to handle competing requests from multiple sources
+- Outputs validated requests as signals to the control layer
+
+**EMBL Control (Exterior Mirror Basic Library Control)**
+
+- Middleware layer acting as a request gatekeeper
+- Evaluates conditions and decides whether to forward or block requests to motor services
+- Manages control logic for fold, glass, and heat functionalities
+- Decouples application logic from hardware-level motor control
+
+**BCMS (Basic Control Motor Services)**
+
+- Hardware abstraction layer providing low-level motor control
+- Implements block detection (current monitoring), potentiometer evaluation, and diagnostics
+- Handles motor movements (direction A/B, positioning), speed regulation, and stop logic
+- Independent of application-level business logic
+
+Communication Pattern
+~~~~~~~~~~~~~~~~~~~~~
+
+Components communicate **unidirectionally** through signals:
+   EMBLA->EMBLC->BMCS
+
+- Each component is **independent** and loosely coupled
+- Signal-based interfaces enable AUTOSAR Adaptive service-oriented communication
+- No direct dependencies between layers—promotes modularity and testability
+
+Implementation Status
+~~~~~~~~~~~~~~~~~~~~~
+
+⚠️ **In Progress** - This architecture represents the target design direction. Implementation is ongoing with incremental migration to this pattern.
+
 What has been built so far
 --------------------------
 
