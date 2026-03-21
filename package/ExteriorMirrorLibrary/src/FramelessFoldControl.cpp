@@ -224,18 +224,18 @@ t_emblAbortReason FramelessFoldController::checkAbortConditions(bool requestOngo
     
 #if FRAMELESS_MIRROR_BLOCK_DET_TYPE != 0u
     t_emblMirrorBlockState horizontalblockDetected;
-    Read_embl_BlockState((uint8)INST_FRAMELESS_HORIZONTAL_MOTOR, &horizontalblockDetected);
+    Read_BlockState((uint8)INST_FRAMELESS_HORIZONTAL_MOTOR, &horizontalblockDetected);
 #endif
 
     t_emblGlassManualAdjustCmd manualAdjustCmd;
-    Read_embl_GlassManualAdjustCmd(&manualAdjustCmd);
+    Read_GlassManualAdjustCmd(&manualAdjustCmd);
 
 #if GLASS_AUTO_ADJUST_AVAILABLE
     t_emblGlassAutoAdjustCmd autoAdjustCmd;
-    Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
+    Read_GlassAutoAdjustCmd(&autoAdjustCmd);
 #endif
 
-    Read_embl_MirrorGlassAdjPosValidStat(&posAxisXAvailable);
+    Read_MirrorGlassAdjPosValidStat(&posAxisXAvailable);
 
     if ((posAxisXAvailable == true))
     {
@@ -284,10 +284,10 @@ void FramelessFoldController::mirrorControl()
     static t_emblMirrorFoldCmd prevFramelessFoldCmd = MIRRFLD_COMMAND_IDLE;
     t_emblAbortReason foldAbortReason_e;
     t_emblGlassManualAdjustCmd manualAdjustCmd;
-    Read_embl_GlassManualAdjustCmd(&manualAdjustCmd);
+    Read_GlassManualAdjustCmd(&manualAdjustCmd);
 #if GLASS_AUTO_ADJUST_AVAILABLE
     t_emblGlassAutoAdjustCmd autoAdjustCmd;
-    Read_embl_GlassAutoAdjustCmd(&autoAdjustCmd);
+    Read_GlassAutoAdjustCmd(&autoAdjustCmd);
 #endif
     
     const bool requestOngoing_u8 = (prevFramelessFoldCmd != single().FramelessFoldCmd_e) ? false : true;

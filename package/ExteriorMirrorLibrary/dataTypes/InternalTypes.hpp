@@ -44,12 +44,12 @@ typedef enum {
 
 /** Structure containing frameless fold control single data */
 typedef struct {
+  /** Frameless auto adjustment command */
+  t_emblGlassAutoAdjustCmd FramelessAutoAdjCmd_e;
   /** Frameless fold abort reason */
   t_emblAbortReason FramelessFoldAbortReason_e;
   /** Frameless fold request */
   t_emblMirrorFoldCmd FramelessFoldCmd_e;
-  /** Frameless auto adjustment command */
-  t_emblGlassAutoAdjustCmd FramelessAutoAdjCmd_e;
   /** Frameless Fold output command */
   t_emblMirrorFoldCmd FramelessFoldActiveCmd_e;
 } mirrorFramelessFoldSingle;

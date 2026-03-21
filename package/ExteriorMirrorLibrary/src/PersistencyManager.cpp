@@ -27,17 +27,18 @@ PersistencyManager& PersistencyManager::getInstance()
 PersistencyManager::PersistencyManager()
 {
     std::memset(&m_state, 0, sizeof(m_state));
-    m_state.defaultData.LowPositionFold_u16   = EMBL_MM_PARAM(embl_FramelessFoldLowerLimitPos);
-    m_state.defaultData.LowPositionX_u16      = EMBL_MM_PARAM(embl_FramelessHorizontalLowerLimitPos);
-    m_state.defaultData.HighPositionX_u16     = EMBL_MM_PARAM(embl_FramelessHorizontalUpperLimitPos);
-    m_state.defaultData.LowPositionY_u16      = EMBL_MM_PARAM(embl_FramelessVerticalLowerLimitPos);
-    m_state.defaultData.HighPositionY_u16     = EMBL_MM_PARAM(embl_FramelessVerticalUpperLimitPos);
-    m_state.defaultData.FoldDrivePosX_u16     = EMBL_MM_PARAM(embl_FramelessDrivePosX);
-    m_state.defaultData.FoldDrivePosY_u16     = EMBL_MM_PARAM(embl_FramelessDrivePosY);
+    /*TBD: exxce with configurable parameters*/
+    m_state.defaultData.LowPositionFold_u16   = 0u;
+    m_state.defaultData.LowPositionX_u16      = 0u;
+    m_state.defaultData.HighPositionX_u16     = 0u;
+    m_state.defaultData.LowPositionY_u16      = 0u;
+    m_state.defaultData.HighPositionY_u16     = 0u;
+    m_state.defaultData.FoldDrivePosX_u16     = 0u;
+    m_state.defaultData.FoldDrivePosY_u16     = 0u;
     m_state.defaultData.FoldPosSaveAllowed_u1 = true;
     m_state.defaultSet = true;
-    m_state.NvMWriteState = EMBLC_NVM_REQ_IDLE;
-    m_state.NvMReadState = EMBLC_NVM_REQ_IDLE;
+    m_state.NvMWriteState = NVM_REQ_IDLE;
+    m_state.NvMReadState = NVM_REQ_IDLE;
     /*TBD: Use a parameter for NvM request timeout */
     m_state.NvMReqTimeout = 1000;
 }
@@ -55,15 +56,15 @@ void PersistencyManager::mainTask()
     }
     else
     {
-        if (m_state.NvMWriteState == EMBLC_NVM_REQ_ONGOING)
+        if (m_state.NvMWriteState == NVM_REQ_ONGOING)
         {
-            m_state.NvMWriteState = EMBLC_NVM_REQ_FAILED;
+            m_state.NvMWriteState = NVM_REQ_FAILED;
             // Optionally: trigger a read to resync, or notify error
             m_state.NvMReqTimeout = 1000;
         }
-        else if (m_state.NvMReadState == EMBLC_NVM_REQ_ONGOING)
+        else if (m_state.NvMReadState == NVM_REQ_ONGOING)
         {
-            m_state.NvMReadState = EMBLC_NVM_REQ_FAILED;
+            m_state.NvMReadState = NVM_REQ_FAILED;
         }
         else
         {
@@ -111,7 +112,7 @@ void PersistencyManager::writeData(const mirrorCtrlNvMData& data)
     {
         m_state.dataStorage = data;
         m_state.dataValid = true;
-        m_state.NvMWriteState = EMBLC_NVM_REQ_ONGOING;
+        m_state.NvMWriteState = NVM_REQ_ONGOING;
         /*TBD: Use a parameter for NvM request timeout */
         m_state.NvMReqTimeout = 1000;
     }
@@ -123,7 +124,7 @@ void PersistencyManager::writeData(const mirrorCtrlNvMData& data)
 ***********************************************************************/
 bool PersistencyManager::isBusy() const
 {
-    return m_state.NvMReadState == EMBLC_NVM_REQ_ONGOING || m_state.NvMWriteState == EMBLC_NVM_REQ_ONGOING;
+    return m_state.NvMReadState == NVM_REQ_ONGOING || m_state.NvMWriteState == NVM_REQ_ONGOING;
 }
 
 } // namespace persistency
