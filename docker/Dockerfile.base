@@ -1,0 +1,139 @@
+# ==============================================================================
+# AUTOSAR Adaptive Platform - Base Build Image
+# ==============================================================================
+# This base image contains all build tools and dependencies required for
+# compiling AUTOSAR Adaptive applications. It serves as the foundation for
+# all other images in the project.
+#
+# Usage: This image is not run directly; it's used as a base for other images.
+# ==============================================================================
+
+FROM ubuntu:22.04 AS ara-base
+
+# ============================================================================
+# METADATA
+# ============================================================================
+LABEL maintainer="Exterior Mirror Development Team"
+LABEL description="AUTOSAR Adaptive Platform Base Build Image"
+LABEL version="1.0.0"
+
+# ============================================================================
+# ENVIRONMENT CONFIGURATION
+# ============================================================================
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set locale to avoid encoding issues
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# AUTOSAR-specific environment variables
+ENV ARA_ROOT=/opt/autosar
+ENV ARA_MANIFESTS_PATH=/opt/autosar/manifests
+ENV ARA_LOG_PATH=/var/log/autosar
+
+# Shared memory configuration
+ENV SHM_SIZE=64m
+
+# ============================================================================
+# INSTALL BUILD DEPENDENCIES
+# ============================================================================
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # ─────────────────────────────────────────────────────────────────────────
+    # C++ Build Essentials
+    # ─────────────────────────────────────────────────────────────────────────
+    build-essential \
+    g++ \
+    gcc \
+    make \
+    ninja-build \
+    # ─────────────────────────────────────────────────────────────────────────
+    # CMake (build system)
+    # ─────────────────────────────────────────────────────────────────────────
+    cmake \
+    # ─────────────────────────────────────────────────────────────────────────
+    # Python 3 (for build scripts)
+    # ─────────────────────────────────────────────────────────────────────────
+    python3 \
+    python3-pip \
+    python3-venv \
+    # ─────────────────────────────────────────────────────────────────────────
+    # Networking tools (for SOME/IP debugging)
+    # ─────────────────────────────────────────────────────────────────────────
+    iproute2 \
+    iputils-ping \
+    net-tools \
+    tcpdump \
+    # ─────────────────────────────────────────────────────────────────────────
+    # Development libraries
+    # ─────────────────────────────────────────────────────────────────────────
+    libboost-all-dev \
+    libssl-dev \
+    libpthread-stubs0-dev \
+    # ─────────────────────────────────────────────────────────────────────────
+    # Utilities
+    # ─────────────────────────────────────────────────────────────────────────
+    git \
+    curl \
+    wget \
+    vim \
+    gdb \
+    valgrind \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ============================================================================
+# INSTALL VSOMEIP (SOME/IP Implementation)
+# ============================================================================
+# vsomeip is the reference implementation of SOME/IP protocol used in
+# AUTOSAR Adaptive for service-oriented communication.
+# ============================================================================
+
+WORKDIR /tmp
+
+# Clone and build vsomeip
+RUN git clone https://github.com/COVESA/vsomeip.git \
+    && cd vsomeip \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DENABLE_SIGNAL_HANDLING=1 \
+        -DDIAGNOSIS_ADDRESS=0x10 \
+    && make -j1 install \
+    && ldconfig \
+    && cd /tmp \
+    && rm -rf vsomeip
+# ============================================================================
+# CREATE AUTOSAR DIRECTORY STRUCTURE
+# ============================================================================
+
+RUN mkdir -p ${ARA_ROOT} \
+    && mkdir -p ${ARA_MANIFESTS_PATH} \
+    && mkdir -p ${ARA_LOG_PATH} \
+    && mkdir -p /opt/autosar/bin \
+    && mkdir -p /opt/autosar/lib \
+    && mkdir -p /opt/autosar/config
+
+# ============================================================================
+# CREATE NON-ROOT USER FOR SECURITY
+# ============================================================================
+# Running containers as non-root is a security best practice.
+# The 'ara' user will own all AUTOSAR-related files and processes.
+# ============================================================================
+
+RUN groupadd --gid 1000 ara \
+    && useradd --uid 1000 --gid ara --shell /bin/bash --create-home ara \
+    && chown -R ara:ara ${ARA_ROOT} \
+    && chown -R ara:ara ${ARA_LOG_PATH}
+
+# ============================================================================
+# SET WORKING DIRECTORY
+# ============================================================================
+
+WORKDIR /workspace
+
+# Default command (overridden by derived images)
+CMD ["/bin/bash"]

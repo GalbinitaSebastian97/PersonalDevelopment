@@ -1,0 +1,293 @@
+# ==============================================================================
+# AUTOSAR Adaptive Platform - Docker Compose Orchestration
+# ==============================================================================
+# This file defines the multi-container deployment for the ExteriorMirror
+# system, including networking and volume configuration.
+#
+# Usage:
+#   docker-compose up --build                    # Build and run all services
+#   docker-compose up --build mirror-provider    # Run only provider
+#   docker-compose logs -f                       # Follow logs
+#   docker-compose down                          # Stop and remove containers
+# ==============================================================================
+
+version: '3.8'
+
+# ==============================================================================
+# NETWORKS
+# ==============================================================================
+# We create a custom bridge network that supports multicast, which is required
+# for SOME/IP service discovery.
+# ==============================================================================
+
+networks:
+  autosar-network:
+    driver: bridge
+    driver_opts:
+      # Enable multicast support (required for SOME/IP)
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.enable_icc: "true"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+# Persistent volumes for logs and shared data.
+# ==============================================================================
+
+volumes:
+  # Shared volume for logs (persists on host)
+  autosar-logs:
+    driver: local
+  
+  # Shared memory volume (for cross-container IPC)
+  # Note: Each container also needs --shm-size for internal /dev/shm
+  autosar-shm:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=64m
+
+# ==============================================================================
+# SERVICES
+# ==============================================================================
+
+services:
+  # ──────────────────────────────────────────────────────────────────────────
+  # BASE IMAGE BUILDER (not a running service)
+  # ──────────────────────────────────────────────────────────────────────────
+  # This builds the base image that other services depend on.
+  # It's not started as a service, but built as a dependency.
+  # ──────────────────────────────────────────────────────────────────────────
+  
+  ara-base:
+    image: ara-base:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.base
+    profiles:
+      - build-only  # Only build, don't run
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # MIRROR SERVICE PROVIDER
+  # ──────────────────────────────────────────────────────────────────────────
+  # The provider hosts the MirrorFoldService and registers it via shared
+  # memory for discovery by consumers.
+  # ──────────────────────────────────────────────────────────────────────────
+  
+  mirror-provider:
+    image: mirror-provider:${BUILD_TYPE:-debug}
+    container_name: mirror-provider
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.provider
+      args:
+        BUILD_TYPE: ${BUILD_TYPE:-Debug}
+        CI_BUILD: ${CI_BUILD:-OFF}
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Networking
+    # ─────────────────────────────────────────────────────────────────────────
+    networks:
+      autosar-network:
+        ipv4_address: 172.28.0.10
+    hostname: mirror-provider
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Shared Memory Configuration
+    # ─────────────────────────────────────────────────────────────────────────
+    # The provider needs shared memory for:
+    # 1. Internal /dev/shm for service registry
+    # 2. IPC shared volume for cross-container communication
+    # ─────────────────────────────────────────────────────────────────────────
+    shm_size: '64m'
+    ipc: shareable  # Allow other containers to share this container's IPC
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Volumes
+    # ─────────────────────────────────────────────────────────────────────────
+    volumes:
+      # Persist logs to host
+      - autosar-logs:/var/log/autosar
+      # Mount dist folder for build artifacts (optional, for debugging)
+      - ../dist:/workspace/dist:ro
+      # Mount manifests (allows hot-reloading of config)
+      - ../apps/MirrorServiceProvider/manifests:/opt/autosar/manifests:ro
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Environment Variables
+    # ─────────────────────────────────────────────────────────────────────────
+    environment:
+      - APP_NAME=MirrorServiceProvider
+      - APP_ROLE=provider
+      - ARA_LOG_LEVEL=${LOG_LEVEL:-info}
+      - VSOMEIP_CONFIGURATION=/opt/autosar/config/vsomeip.json
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Resource Limits
+    # ─────────────────────────────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Restart Policy
+    # ─────────────────────────────────────────────────────────────────────────
+    restart: unless-stopped
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Logging Configuration
+    # ─────────────────────────────────────────────────────────────────────────
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "app,role"
+    
+    labels:
+      app: "exterior-mirror"
+      role: "provider"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # MIRROR SERVICE CONSUMER
+  # ──────────────────────────────────────────────────────────────────────────
+  # The consumer discovers the MirrorFoldService via shared memory and
+  # invokes operations on it.
+  # ──────────────────────────────────────────────────────────────────────────
+  
+  mirror-consumer:
+    image: mirror-consumer:${BUILD_TYPE:-debug}
+    container_name: mirror-consumer
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.consumer
+      args:
+        BUILD_TYPE: ${BUILD_TYPE:-Debug}
+        CI_BUILD: ${CI_BUILD:-OFF}
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Dependencies
+    # ─────────────────────────────────────────────────────────────────────────
+    depends_on:
+      mirror-provider:
+        condition: service_healthy
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Networking
+    # ─────────────────────────────────────────────────────────────────────────
+    networks:
+      autosar-network:
+        ipv4_address: 172.28.0.20
+    hostname: mirror-consumer
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Shared Memory Configuration
+    # ─────────────────────────────────────────────────────────────────────────
+    # Consumer shares the provider's IPC namespace to access the same
+    # shared memory region for service discovery.
+    # ─────────────────────────────────────────────────────────────────────────
+    shm_size: '64m'
+    ipc: container:mirror-provider  # Share IPC with provider!
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Volumes
+    # ─────────────────────────────────────────────────────────────────────────
+    volumes:
+      - autosar-logs:/var/log/autosar
+      - ../dist:/workspace/dist:ro
+      - ../apps/MirrorServiceConsumer/manifests:/opt/autosar/manifests:ro
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Environment Variables
+    # ─────────────────────────────────────────────────────────────────────────
+    environment:
+      - APP_NAME=MirrorServiceConsumer
+      - APP_ROLE=consumer
+      - ARA_LOG_LEVEL=${LOG_LEVEL:-info}
+      - VSOMEIP_CONFIGURATION=/opt/autosar/config/vsomeip.json
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Resource Limits
+    # ─────────────────────────────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+    
+    restart: unless-stopped
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    labels:
+      app: "exterior-mirror"
+      role: "consumer"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # MIRROR INTEGRATED (Provider + Consumer in one container)
+  # ──────────────────────────────────────────────────────────────────────────
+  # This service runs both provider and consumer in a single container,
+  # useful for integration testing and simpler deployments.
+  # ──────────────────────────────────────────────────────────────────────────
+  
+  mirror-integrated:
+    image: mirror-integrated:${BUILD_TYPE:-debug}
+    container_name: mirror-integrated
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.integrated
+      args:
+        BUILD_TYPE: ${BUILD_TYPE:-Debug}
+        CI_BUILD: ${CI_BUILD:-OFF}
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Profile: Only run when explicitly requested
+    # ─────────────────────────────────────────────────────────────────────────
+    profiles:
+      - integrated
+    
+    networks:
+      autosar-network:
+        ipv4_address: 172.28.0.30
+    hostname: mirror-integrated
+    
+    shm_size: '64m'
+    
+    volumes:
+      - autosar-logs:/var/log/autosar
+      - ../dist:/workspace/dist:ro
+    
+    environment:
+      - APP_NAME=MirrorIntegrated
+      - APP_ROLE=integrated
+      - ARA_LOG_LEVEL=${LOG_LEVEL:-info}
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+    
+    restart: unless-stopped
+    
+    labels:
+      app: "exterior-mirror"
+      role: "integrated"

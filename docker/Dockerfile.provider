@@ -1,0 +1,186 @@
+# ==============================================================================
+# AUTOSAR Adaptive Platform - Mirror Service Provider
+# ==============================================================================
+# Multi-stage Dockerfile for building and running the MirrorServiceProvider.
+#
+# Stage 1 (builder): Compiles the application using run.py
+# Stage 2 (runtime): Minimal image with only runtime dependencies
+#
+# Usage:
+#   docker build -f Dockerfile.provider -t mirror-provider:debug \
+#       --build-arg BUILD_TYPE=Debug ..
+# ==============================================================================
+
+# ============================================================================
+# STAGE 1: BUILDER
+# ============================================================================
+# This stage contains all build tools and compiles the application.
+# The resulting binaries are copied to the runtime stage.
+# ============================================================================
+
+FROM ara-base:latest AS builder
+
+# Build argument for Debug/Release
+ARG BUILD_TYPE=Debug
+ENV BUILD_TYPE=${BUILD_TYPE}
+
+# Build argument for CI mode
+ARG CI_BUILD=OFF
+ENV CI_BUILD=${CI_BUILD}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy source code
+# ─────────────────────────────────────────────────────────────────────────────
+# We copy the entire project to ensure all dependencies are available.
+# The .dockerignore file excludes unnecessary files.
+# ─────────────────────────────────────────────────────────────────────────────
+# Switch to root to install any extra runtime libs if needed
+USER root
+WORKDIR /workspace
+COPY . .
+# ensure that ara user has full write access to the /workspace folder.
+RUN chown -R ara:ara /workspace && chmod -R 755 /workspace
+# ─────────────────────────────────────────────────────────────────────────────
+# Run the build using run.py
+# ─────────────────────────────────────────────────────────────────────────────
+# This executes the same build process that developers use locally,
+# ensuring consistency between local and containerized builds.
+# ─────────────────────────────────────────────────────────────────────────────
+
+USER ara
+
+RUN python3 scripts/run.py MirrorServiceProvider Debug --clean --verbose
+
+# Verify the build output exists
+RUN ls -la dist/MirrorServiceProvider/${BUILD_TYPE}/bin/ \
+    && echo "Build completed successfully!"
+
+
+# ============================================================================
+# STAGE 2: RUNTIME
+# ============================================================================
+# This stage creates a minimal image containing only what's needed to run
+# the application. Build tools are NOT included, reducing image size and
+# attack surface.
+# ============================================================================
+
+FROM ubuntu:22.04 AS runtime
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Metadata
+# ─────────────────────────────────────────────────────────────────────────────
+
+LABEL maintainer="Exterior Mirror Development Team"
+LABEL description="Mirror Fold Service Provider"
+LABEL version="1.0.0"
+LABEL component="provider"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# AUTOSAR paths
+ENV ARA_ROOT=/opt/autosar
+ENV ARA_MANIFESTS_PATH=/opt/autosar/manifests
+ENV ARA_LOG_PATH=/var/log/autosar
+ENV LD_LIBRARY_PATH=/opt/autosar/lib:/usr/local/lib
+
+# Application-specific
+ENV APP_NAME=MirrorServiceProvider
+ENV APP_ROLE=provider
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Install runtime dependencies only
+# ─────────────────────────────────────────────────────────────────────────────
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Runtime libraries
+    libstdc++6 \
+    libboost-system1.74.0 \
+    libboost-thread1.74.0 \
+    libboost-log1.74.0 \
+    libboost-filesystem1.74.0 \
+    # Networking (for SOME/IP)
+    iproute2 \
+    iputils-ping \
+    # Process management
+    tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Create non-root user
+# ─────────────────────────────────────────────────────────────────────────────
+
+RUN groupadd --gid 1000 ara \
+    && useradd --uid 1000 --gid ara --shell /bin/bash --create-home ara
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Create directory structure
+# ─────────────────────────────────────────────────────────────────────────────
+
+RUN mkdir -p ${ARA_ROOT}/bin \
+    && mkdir -p ${ARA_ROOT}/lib \
+    && mkdir -p ${ARA_MANIFESTS_PATH} \
+    && mkdir -p ${ARA_LOG_PATH} \
+    && chown -R ara:ara ${ARA_ROOT} \
+    && chown -R ara:ara ${ARA_LOG_PATH}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy artifacts from builder stage
+# ─────────────────────────────────────────────────────────────────────────────
+
+ARG BUILD_TYPE=Debug
+
+# Copy the compiled binary
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceProvider/${BUILD_TYPE}/bin/MirrorServiceProvider \
+    ${ARA_ROOT}/bin/
+
+# Copy libraries (if any)
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceProvider/${BUILD_TYPE}/lib/ \
+    ${ARA_ROOT}/lib/
+
+# Copy manifests
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceProvider/${BUILD_TYPE}/manifests/ \
+    ${ARA_MANIFESTS_PATH}/
+
+# Copy vsomeip libraries from builder
+COPY --from=builder /usr/local/lib/libvsomeip* /usr/local/lib/
+RUN ldconfig
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy entrypoint and healthcheck scripts
+# ─────────────────────────────────────────────────────────────────────────────
+
+COPY --chown=ara:ara docker/scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=ara:ara docker/scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/healthcheck.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Configure container
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Switch to non-root user
+USER ara
+
+# Working directory
+WORKDIR ${ARA_ROOT}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
+
+# Use tini as init system (handles signals properly)
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+
+# Default command (can be overridden)
+CMD ["MirrorServiceProvider"]

@@ -1,0 +1,158 @@
+# ==============================================================================
+# AUTOSAR Adaptive Platform - Integrated Mirror Application
+# ==============================================================================
+# This image contains BOTH provider and consumer for integration testing.
+# It builds all components and runs them in a single container.
+# ==============================================================================
+
+# ============================================================================
+# STAGE 1: BUILDER
+# ============================================================================
+
+FROM ara-base AS builder
+
+ARG BUILD_TYPE=Debug
+ENV BUILD_TYPE=${BUILD_TYPE}
+
+ARG CI_BUILD=OFF
+ENV CI_BUILD=${CI_BUILD}
+
+WORKDIR /workspace
+COPY --chown=ara:ara . .
+
+USER ara
+
+# Build ALL applications
+RUN python3 scripts/run.py all ${BUILD_TYPE} --clean --verbose
+
+# Verify builds
+RUN echo "=== Verifying build outputs ===" \
+    && ls -la dist/MirrorServiceProvider/${BUILD_TYPE}/bin/ \
+    && ls -la dist/MirrorServiceConsumer/${BUILD_TYPE}/bin/ \
+    && echo "All builds completed successfully!"
+
+
+# ============================================================================
+# STAGE 2: RUNTIME
+# ============================================================================
+
+FROM ubuntu:22.04 AS runtime
+
+LABEL maintainer="Exterior Mirror Development Team"
+LABEL description="Mirror Fold Service - Integrated (Provider + Consumer)"
+LABEL version="1.0.0"
+LABEL component="integrated"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+ENV ARA_ROOT=/opt/autosar
+ENV ARA_MANIFESTS_PATH=/opt/autosar/manifests
+ENV ARA_LOG_PATH=/var/log/autosar
+ENV LD_LIBRARY_PATH=/opt/autosar/lib:/usr/local/lib
+
+ENV APP_NAME=MirrorIntegrated
+ENV APP_ROLE=integrated
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    libboost-system1.74.0 \
+    libboost-thread1.74.0 \
+    libboost-log1.74.0 \
+    libboost-filesystem1.74.0 \
+    iproute2 \
+    iputils-ping \
+    tini \
+    # Supervisor for running multiple processes
+    supervisor \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd --gid 1000 ara \
+    && useradd --uid 1000 --gid ara --shell /bin/bash --create-home ara
+
+# Create directory structure
+RUN mkdir -p ${ARA_ROOT}/bin \
+    && mkdir -p ${ARA_ROOT}/lib \
+    && mkdir -p ${ARA_MANIFESTS_PATH} \
+    && mkdir -p ${ARA_LOG_PATH} \
+    && mkdir -p /etc/supervisor/conf.d \
+    && chown -R ara:ara ${ARA_ROOT} \
+    && chown -R ara:ara ${ARA_LOG_PATH}
+
+# Copy artifacts from builder
+ARG BUILD_TYPE=Debug
+
+# Copy Provider
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceProvider/${BUILD_TYPE}/bin/MirrorServiceProvider \
+    ${ARA_ROOT}/bin/
+
+# Copy Consumer
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceConsumer/${BUILD_TYPE}/bin/MirrorServiceConsumer \
+    ${ARA_ROOT}/bin/
+
+# Copy libraries
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceProvider/${BUILD_TYPE}/lib/ \
+    ${ARA_ROOT}/lib/
+
+# Copy manifests (from provider, includes all needed)
+COPY --from=builder --chown=ara:ara \
+    /workspace/dist/MirrorServiceProvider/${BUILD_TYPE}/manifests/ \
+    ${ARA_MANIFESTS_PATH}/
+
+# Copy vsomeip libraries
+COPY --from=builder /usr/local/lib/libvsomeip* /usr/local/lib/
+RUN ldconfig
+
+# Copy scripts
+COPY --chown=ara:ara docker/scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chown=ara:ara docker/scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/healthcheck.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Supervisor configuration for running multiple processes
+# ─────────────────────────────────────────────────────────────────────────────
+
+COPY <<EOF /etc/supervisor/conf.d/autosar.conf
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/autosar/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:provider]
+command=/opt/autosar/bin/MirrorServiceProvider
+user=ara
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/autosar/provider.err.log
+stdout_logfile=/var/log/autosar/provider.out.log
+priority=10
+
+[program:consumer]
+command=/opt/autosar/bin/MirrorServiceConsumer
+user=ara
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/autosar/consumer.err.log
+stdout_logfile=/var/log/autosar/consumer.out.log
+startsecs=3
+priority=20
+EOF
+
+WORKDIR ${ARA_ROOT}
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
+
+# For integrated mode, use supervisor
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/autosar.conf"]
