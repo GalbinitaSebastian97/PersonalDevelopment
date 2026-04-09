@@ -113,12 +113,12 @@ How it is structured
 .. code-block:: text
 
    package/EMBL/
-   ├── src/                   # Core control logic (controller, persistency, mocks)
-   ├── adaptive_services/     # Skeleton and Proxy implementation
-   ├── service_provider/      # Provider entry point (main)
-   ├── service_consumer/      # Consumer entry point (test client)
-   ├── dataTypes/             # Shared type definitions
-   └── config/                # Mirror parameters and configuration
+   ├── appl/                  # Software Components(SWCs)
+   ├── config/                # Contains the configuration for the mirror library
+   ├── dataTypes/             # The definitions for all data structure and types
+   ├── ipc/                   # Inter-Process Communication (In development)
+   ├── src/                   # contins the Mocks
+   └── CMakeLists             # Provides instructions for the compiler
 
 ----
 
