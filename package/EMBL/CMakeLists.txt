@@ -20,7 +20,7 @@ project(ExteriorMirrorCore
 add_library(ExteriorMirrorCore STATIC
     # Source files
     appl/EMBLC/src/FramelessFoldControl.cpp
-)
+)       
 
 # Alias for cleaner CMake targets
 add_library(ExteriorMirror::Core ALIAS ExteriorMirrorCore)
@@ -29,7 +29,7 @@ add_library(ExteriorMirror::Core ALIAS ExteriorMirrorCore)
 # Include Directories
 # ==============================================================================
 
-target_include_directories(ExteriorMirrorCore
+target_include_directories(ExteriorMirrorCores
     PUBLIC
         # Public headers (available to consumers of this library)
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/appl/EMBLC/include>

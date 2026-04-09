@@ -36,10 +36,13 @@ ENV CI_BUILD=${CI_BUILD}
 # ─────────────────────────────────────────────────────────────────────────────
 # Switch to root to install any extra runtime libs if needed
 USER root
+
 WORKDIR /workspace
 COPY . .
 # ensure that ara user has full write access to the /workspace folder.
 RUN chown -R ara:ara /workspace && chmod -R 755 /workspace
+# 1. First, confirm the files exist where we think they are
+RUN ls -d /workspace/package/AraPersistency && ls -d /workspace/package/EMBL
 # ─────────────────────────────────────────────────────────────────────────────
 # Run the build using run.py
 # ─────────────────────────────────────────────────────────────────────────────

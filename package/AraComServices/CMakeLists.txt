@@ -44,9 +44,10 @@ find_package(Threads REQUIRED)
 
 target_link_libraries(AraComServices
     PUBLIC
-        ExteriorMirror::Core        # Depends on core library
+        ExteriorMirror::AraPersistency
     PRIVATE
         Threads::Threads
+        ExteriorMirror::Core
 )
 
 # Link POSIX realtime library for shared memory (shm_open, etc.)

@@ -1,0 +1,82 @@
+# ==============================================================================
+# Dockerfile.diagnostic
+# ------------------------------------------------------------------------------
+# Replaces Dockerfile.provider temporarily to diagnose the incomplete-type
+# error. Run from the project root:
+#
+#   docker build -f docker/Dockerfile.diagnostic -t mirror-diag --no-cache . 2>&1 | tee diag.log
+#
+# Read the output — each STEP is clearly labelled.
+# ==============================================================================
+
+FROM ara-base:latest AS diagnostic
+
+USER root
+WORKDIR /workspace
+COPY . .
+RUN chown -R ara:ara /workspace && chmod -R 755 /workspace
+USER ara
+
+# ==============================================================================
+# STEP 1 — Verify the header actually exists at the path ExteriorMirrorCore
+#           advertises as its PUBLIC include directory.
+# ==============================================================================
+RUN echo "" \
+ && echo "=== STEP 1: locate FramelessFoldControl.hpp on disk ===" \
+ && find /workspace/package/EMBL -name "FramelessFoldControl.hpp" \
+ && echo "=== STEP 1 done ==="
+
+# ==============================================================================
+# STEP 2 — CMake configure. We delete the build dir first instead of --fresh
+#           (--fresh requires CMake 3.24, Ubuntu 22.04 ships CMake 3.22).
+# ==============================================================================
+RUN echo "" \
+ && echo "=== STEP 2: cmake configure ===" \
+ && rm -rf /tmp/build_diag \
+ && mkdir -p /tmp/build_diag \
+ && cmake -S /workspace -B /tmp/build_diag \
+      -DCMAKE_BUILD_TYPE=Debug \
+      -DTARGET_APP=MirrorServiceProvider \
+      -DENABLE_SHARED_MEMORY_IPC=ON \
+ && echo "=== STEP 2 done ==="
+
+# ==============================================================================
+# STEP 3 — Print every include directory registered on ExteriorMirrorCore and
+#           AraComServices by grepping the generated CMake target files.
+#           These files contain the exact -I paths the compiler will receive.
+# ==============================================================================
+RUN echo "" \
+ && echo "=== STEP 3: include dirs from generated CMake files ===" \
+ && echo "--- ExteriorMirrorCore ---" \
+ && grep -r "INTERFACE_INCLUDE_DIRECTORIES\|EMBLC\|EMBL" \
+      /tmp/build_diag/package/EMBL/ 2>/dev/null || echo "(no EMBL build dir found)" \
+ && echo "--- AraComServices ---" \
+ && grep -r "INTERFACE_INCLUDE_DIRECTORIES\|EMBLC\|EMBL" \
+      /tmp/build_diag/package/AraComServices/ 2>/dev/null || echo "(no AraComServices build dir found)" \
+ && echo "--- all generated cmake files mentioning EMBL or EMBLC ---" \
+ && find /tmp/build_diag -name "*.cmake" | xargs grep -l "EMBL\|ExteriorMirrorCore" 2>/dev/null \
+ && echo "=== STEP 3 done ==="
+
+# ==============================================================================
+# STEP 4 — Verbose build of ONLY AraComServices.
+#           The compiler line for MirrorFoldServiceSkeleton.cpp will show every
+#           -I flag. We need to see whether EMBL/appl/EMBLC/include is present.
+# ==============================================================================
+RUN echo "" \
+ && echo "=== STEP 4: verbose build of AraComServices ===" \
+ && cmake --build /tmp/build_diag \
+      --target AraComServices \
+      -- VERBOSE=1 \
+ && echo "=== STEP 4 done ==="
+
+# ==============================================================================
+# STEP 5 — Intentional failure so Docker stops and you can read the output.
+#           Look at STEP 4: find the compiler line for MirrorFoldServiceSkeleton.cpp
+#           and check whether -I.../EMBL/appl/EMBLC/include appears.
+# ==============================================================================
+RUN echo "" \
+ && echo "=== STEP 5: diagnostic complete — intentional stop ===" \
+ && echo "    In STEP 4 output, find the line containing MirrorFoldServiceSkeleton.cpp" \
+ && echo "    and check all -I flags. Report back whether this path appears:" \
+ && echo "    /workspace/package/EMBL/appl/EMBLC/include" \
+ && exit 1

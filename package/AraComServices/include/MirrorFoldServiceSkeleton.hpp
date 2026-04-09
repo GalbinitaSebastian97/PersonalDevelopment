@@ -2,19 +2,11 @@
 #define MIRROR_FOLD_SERVICE_SKELETON_HPP
 
 #include "IMirrorFoldService.hpp"
-// DO NOT #include "FramelessFoldControl.hpp" here — it lives in a different
-// library package and the include path is only available in the .cpp via CMake.
-// A forward declaration is enough because the header only stores a pointer.
+#include "FramelessFoldControl.hpp"
 #include "InternalTypes.hpp"
 #include <memory>
 #include <vector>
 #include <mutex>
-
-// Forward-declare the controller so the header compiles without knowing
-// the full type. The .cpp includes the real header with the full definition.
-namespace emblex {
-    class FramelessFoldController;   // defined in ExteriorMirrorCore
-}
 
 namespace emblex {
 namespace services {
@@ -98,11 +90,11 @@ public:
     /*! @brief Get access to the underlying controller (for init/main task)
      * @return Reference to FramelessFoldController
      *************************************************************/
-    FramelessFoldController& getController() { return *m_controller; }
+    emblex::FramelessFoldController& getController() { return *m_controller; }
 
 private:
     std::string m_instanceId;
-    FramelessFoldController* m_controller;
+    emblex::FramelessFoldController* m_controller;
     /* Flag to track if the service is currently offered */
     bool m_serviceOffered{false};
     /*The actual list of everyone who wants to be notified -> mailing list of callbacks, 
